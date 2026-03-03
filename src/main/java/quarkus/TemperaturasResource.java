@@ -1,39 +1,63 @@
 package quarkus;
 
-import jakarta.ws.rs.GET;
-import jakarta.ws.rs.POST;
-import jakarta.ws.rs.Path;
-import jakarta.ws.rs.Produces;
+import jakarta.inject.Inject;
+import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
+import java.util.NoSuchElementException;
 
 @Path("/temperaturas")
 public class TemperaturasResource {
 
-    private List<Temperatura> valores = new ArrayList<>();
+    private final TemperaturasService temperaturasService;
+
+    @Inject
+    public TemperaturasResource(TemperaturasService temperaturasService) {
+        this.temperaturasService = temperaturasService;
+    }
 
     @POST
     @Produces(MediaType.APPLICATION_JSON)
     public Temperatura nueva(Temperatura temp) {
-        valores.add(temp);
+        temperaturasService.addTemperatura(temp);
         return temp;
     }
 
     @GET
     public List<Temperatura> list() {
-        return Collections.unmodifiableList(valores);
+        return temperaturasService.getAllTemperaturas();
     }
 
     @GET
-//    @Produces("text/plain")
-    @Produces(MediaType.APPLICATION_JSON)
-    @Path("/una")
-    public Temperatura medicion() {
-        return new Temperatura("Málaga", 18, 28);
+    @Path("/maxima")
+    @Produces(MediaType.TEXT_PLAIN)
+    public Response maxima() {
+        if(temperaturasService.isEmpty()) {
+            return Response.status(404).entity("No hay temperaturas").build();
+        } else {
+            int temperaturaMaxima = temperaturasService.maxima();
+            return Response.ok(Integer.toString(temperaturaMaxima))
+                    .header("Access-Control-Allow-Origin", "*")
+                    .build();
+        }
     }
+
+    @GET
+    @Path("/{ciudad}")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Temperatura sacar(@PathParam("ciudad") String ciudad) {
+        return this.temperaturasService.sacarTemperatura(ciudad)
+                .orElseThrow(() -> new NoSuchElementException("No hay registro para la ciudad" + ciudad));
+    }
+
+//    @GET
+//    @Produces("text/plain")
+//    @Produces(MediaType.APPLICATION_JSON)
+//    @Path("/una")
+//    public Temperatura medicion() {
+//        return new Temperatura("Málaga", 18, 28);
+//    }
 
 }
